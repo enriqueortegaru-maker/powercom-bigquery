@@ -1,3 +1,4 @@
+CREATE OR REPLACE PROCEDURE `mm-commissions-reporting.TERMINALES.pr_device_base`()
 BEGIN
 
      --Tabla temporal que sustituye a `mm-commissions-reporting.TERMINALES.v_device_base`
@@ -5,7 +6,7 @@ BEGIN
 --CALL `mm-commissions-reporting.TERMINALES.pr_device_base`();
 
 -- CALL `mm-commissions-reporting.10_CLEANING_COMMISSIONS.pr_ventas_base_telco_osp`();
--- CALL `mm-commissions-reporting.TERMINALES.pr_osp_maestros`();
+CALL `mm-commissions-reporting.TERMINALES.pr_osp_maestros`();
 
 CREATE OR REPLACE TABLE `mm-commissions-reporting.TEMP.device_base`
 OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)) AS
@@ -400,26 +401,28 @@ UNION ALL
 
 /* DATOS ORANGE, JAZZTEL Y SIMYO */
 
+--SELECT
 SELECT DISTINCT
-
-        -- INFORMACIÓN DEL CANAL
-        CASE WHEN DEVICE.sell_type = 'RENOVE' THEN 'RENUEVO' ELSE 'CAPTACION' END AS sell_type
-       
-       ,DEVICE.channel_type_ds AS channel_type_ds
-       ,DEVICE.master_channel_ds AS master_channel_ds
-       ,DEVICE.channel_ds AS channel_ds
-       ,DEVICE.subchannel_ds AS subchannel_ds
-       ,COALESCE(DEALER.id_comisionista, DEVICE.sfid_id) AS sfid_id  --Si tenemos id_comisionista de DEALER y si no, tomamos lo que venga
-       ,COALESCE(DEALER.sfid_id, DEVICE.user_store) AS user_store    --Si tenemos sfid_id de DEALER y si no, tomamos lo que venga
-       ,COALESCE(DEALER.sfid_id, UPPER(SPLIT(DEVICE.seller, "@")[OFFSET(0)])) AS seller   --Si tenemos sfid_id de DEALER y si no, tomamos lo que venga
+  --DATOS DEL CANAL
+  CASE WHEN DEVICE.sell_type = 'RENOVE'       THEN 'RENUEVO'
+       WHEN DEVICE.sell_type = 'ALTA NUEVA'   THEN 'ALTA'
+       ELSE DEVICE.sell_type END AS sell_type
+  ,`mm-commissions-reporting.TERMINALES.f_channel_type_ds_osp`(SFID_MAESTRO.SFID_CHANNEL_TYPE_DES, SFIDS_MO.n0, SFIDS_MO.n1) AS channel_type_ds
+  ,COALESCE(DEVICE.master_channel_ds, SFIDS_MO.n0) AS master_channel_ds
+  ,COALESCE(DEVICE.channel_ds, SFIDS_MO.n1) AS channel_ds
+  ,COALESCE(DEVICE.subchannel_ds, SFIDS_MO.n2) AS subchannel_ds
+  ,COALESCE(DEALER.id_comisionista, DEVICE.sfid_id) AS sfid_id
+  ,COALESCE(DEALER.sfid_id, DEVICE.user_store) AS user_store
+  ,COALESCE(DEALER.sfid_id, UPPER(SPLIT(DEVICE.seller, "@")[OFFSET(0)])) AS seller
        ,SALES_CHANNEL.channel_segment_ds AS channel_segment_ds
-       ,DEVICE.segment_ds
+  ,CASE
+    WHEN DEVICE.segment_ds = 'RESIDENTIAL' THEN 'RESIDENCIAL'
+    WHEN DEVICE.segment_ds = 'ENTERPRISE' THEN 'EMPRESA'
+    ELSE DEVICE.segment_ds
+  END AS segment_ds
        ,CAST(NULL AS STRING) AS channel_id
        ,CAST(NULL AS STRING)AS sfid_ifs
-       
---       ,CASE WHEN DEALER.zona_fiscal = 'PEN' THEN 1 WHEN DEALER.zona_fiscal = 'CAN' THEN 4 ELSE CAST(NULL AS INT64) END AS region_code
-       ,CASE WHEN DEALER.zona_fiscal = 'PEN' THEN 1 WHEN DEALER.zona_fiscal = 'CAN' THEN 4 ELSE 1 END AS region_code
-          
+  ,`mm-commissions-reporting.TERMINALES.f_region_code_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO) AS region_code
        --DATOS DE LA VENTA
        ,DEVICE.brand_ds
        ,DEVICE.data_source_ds AS data_source
@@ -432,28 +435,20 @@ SELECT DISTINCT
        ,CAST(DEVICE.phone_nm AS STRING) phone_nm
        ,CAST(DEVICE.tariff_key AS STRING) AS tariff_id
        ,DEVICE.tariff_ds
-
        ,CASE WHEN DEVICE.sell_type = 'RENOVE' THEN 'RENUEVO' ELSE DEVICE.order_type_agg END AS order_type_agg
-
        ,COALESCE(SALES.technology_ds, 'MOBILE') AS sales_technology_ds
-       ,SALES.sell_bundle_type AS bundle_type
+  ,CASE WHEN SALES.service_type = 'MOBILE' THEN 'MO' ELSE 'FMC' END AS bundle_type
        ,COALESCE(REPLACE(SALES.sell_line_type_ds, 'DESC', 'MAIN'), 'MAIN') AS line_type_ds
        ,COALESCE(SALES.billing_type_ds, 'POSTPAID') AS billing_type_ds
        ,DATE(DEVICE.order_date) AS order_date
        ,SALES.service_status_ds AS status_servicio
        ,'C -' || SALES.cancellation_subreason_agg AS motivo_cancelacion
-
-       ,COALESCE(
-                CASE WHEN DEVICE.sell_type IN ('ALTA NUEVA', 'PORTABILIDAD','MIGRACION') THEN SALES.activation_date END
-                ,DATE(DEVICE.order_date)
-                ) AS activation_date
-
+  ,COALESCE(CASE WHEN DEVICE.sell_type IN ('ALTA NUEVA', 'PORTABILIDAD','MIGRACION') THEN SALES.activation_date END, DATE(DEVICE.order_date)) AS activation_date
        ,COALESCE(DATE(DEVICE.cancellation_date_ts),SALES.real_deactivation_date) AS deactivation_date
-
        -- DATOS DEL TERMINAL
        ,DEVICE.terminal_status_ds
        ,CAST(DEVICE.terminal_id AS STRING) AS product_code
-       ,DEVICE.terminal_name
+  ,INITCAP(DEVICE.terminal_model) as terminal_name
        ,DEVICE.terminal_model AS product
        ,DEVICE.financed_months
        ,DEVICE.financed_monthly_quota
@@ -464,30 +459,20 @@ SELECT DISTINCT
        ,DEVICE.service_type AS technology_ds
        ,DEVICE.serial_number
        ,DEVICE.offer_segmentation
-
        -- DATOS DE IMPORTE PARA EL SUBSIDIO
-      
-       ,CASE WHEN DEALER.zona_fiscal = 'PEN' THEN 21 WHEN DEALER.zona_fiscal = 'CAN' THEN 7 ELSE CAST(NULL AS INT64) END AS tax
-
-       ,CASE WHEN DEALER.zona_fiscal = 'PEN' THEN 0.21 WHEN DEALER.zona_fiscal = 'CAN' THEN 0.07 ELSE CAST(NULL AS INT64) END AS tax_value -- IMPUESTO APLICADO A CLIENTE
-       
-       ,CAST(NULL AS FLOAT64) AS purch_price -- COSTE DE TERMINAL SIN IMPUESTOS
-       ,CAST(NULL AS FLOAT64) AS net_subsidy -- SUBSIDIO NETO CALCULADO POR NEGOCIO
-       ,DEVICE.initial_payment AS end_user_price -- PAGO INICIAL DEL CLIENTE
-       ,CAST(NULL AS FLOAT64) AS coste_device
-          
-       -- CACULAMOS CANTIDADES DE SUBSIDIOS
-       ,CAST(NULL AS FLOAT64) AS subsidy
-
-       -- CALCULAMOS EL SUBSIDIO AJUSTANDO POR COSTE DE TERMINAL MENOS PAGO PLAZO Y PAGO FINAL DEL CLIENTE
- 
-       ,CAST(NULL AS FLOAT64) AS subsidy_payterm       
-          
-       -- PAGO A PLAZOS DEL CLIENTE 
-          
+  ,`mm-commissions-reporting.TERMINALES.f_tax_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO) AS tax --SE USA LA PROVINCIA DE ENVIO PORQUE HAY DISCREPANCIAS EN ALGUNOS SFIDS ENTRE LAS PROVINCIAS (THADEA PAGABA A LA PROVINCIA DE ENVIO)
+  ,`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO) AS tax_value
+  ,SAP_MAESTRO.LOAN_PRICE_QTY AS purch_price --PRECIO CESION SIN IMPUESTOS
+  ,ROUND(SAP_MAESTRO.LOAN_PRICE_QTY - (DEVICE.total_pay_value/(1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO))),2) as net_subsidy --SUBSIDIO NETO, ESTE ES EL CALCULABA THADEA
+  ,DEVICE.total_pay_value AS end_user_price
+  ,ROUND(SAP_MAESTRO.LOAN_PRICE_QTY * (1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO)), 2) as coste_device --PRECIO CESION PERO CON IMPUESTOS
+  ,ROUND((SAP_MAESTRO.LOAN_PRICE_QTY*(1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO))) - DEVICE.total_pay_value,2) as subsidy --DIFERENCIA ENTRE LO PAGADO Y EL PRECIO CESION
+  ,CASE --PARA JAZZTEL EL total_pay_value VIENE SIN IMPUESTOS, SE LOS PONEMOS PARA QUE TODAS LAS MARCAS ESTEN IGUAL
+    WHEN DEVICE.brand_ds = 'JAZZTEL' THEN ROUND((DEVICE.financed_months * DEVICE.financed_monthly_quota)*(1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO)),2)
+    ELSE ROUND((DEVICE.financed_months * DEVICE.financed_monthly_quota),2)
+  END AS subsidy_payterm
        ,CAST(NULL AS FLOAT64) AS subsidy_pay25
-
-       ,COALESCE(AGRUPACION.agrupacion_canal, DEALER.agrupacion_canal) AS agrupacion_canal
+  ,DEALER.agrupacion_canal AS agrupacion_canal
        ,DEALER.canal AS canal
        ,DEALER.distribuidor AS distribuidor
        ,DEALER.cif AS cif
@@ -495,90 +480,83 @@ SELECT DISTINCT
        ,DEALER.nombre_comercio AS nombre_comercio
        ,DEVICE.financed_init_date AS fecha_inicio_financiacion
        ,DEVICE.financed_end_date AS fecha_fin_financiacion
-       ,AGRUPACION.codigo_canal_sap AS cod_canal
+  --,AGRUPACION.codigo_canal_sap AS cod_canal
+  ,`mm-commissions-reporting.COMISIONES.f_dealer_cod_canal`(DEALER.agrupacion_canal, DEALER.canal) AS cod_canal
        ,CAST(NULL AS FLOAT64) AS original_cost_price
-       ,DEVICE.total_pay_value
+  ,CASE --PARA JAZZTEL EL total_pay_value VIENE SIN IMPUESTOS, SE LOS PONEMOS PARA QUE TODAS LAS MARCAS ESTEN IGUAL
+    WHEN DEVICE.brand_ds = 'JAZZTEL' THEN ROUND(DEVICE.total_pay_value * (1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO)),2)
+    ELSE DEVICE.total_pay_value
+  END AS total_pay_value
        ,DEVICE.courier
        ,CASE WHEN DEVICE.penalty_value = 0.0 THEN 'NO' ELSE 'SI' END AS compromiso_permanencia
-       ,CAST (NULL AS FLOAT64) AS pago_inicial
+  ,CASE --PARA JAZZTEL EL total_pay_value VIENE SIN IMPUESTOS, SE LOS PONEMOS PARA QUE TODAS LAS MARCAS ESTEN IGUAL
+    WHEN DEVICE.is_financed_desc = 'SI' AND DEVICE.brand_ds = 'JAZZTEL' THEN ROUND(DEVICE.initial_payment * (1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO)),2)
+    WHEN DEVICE.is_financed_desc = 'NO' AND DEVICE.brand_ds = 'JAZZTEL' THEN ROUND(DEVICE.total_pay_value * (1+`mm-commissions-reporting.TERMINALES.f_tax_value_osp`(DEALER.zona_fiscal, SFIDS_OSP.PROVINCIA_ENVIO)),2)
+    WHEN DEVICE.is_financed_desc = 'SI' THEN DEVICE.initial_payment
+    WHEN DEVICE.is_financed_desc = 'NO' THEN DEVICE.total_pay_value
+  ELSE CAST(NULL AS FLOAT64) END AS pago_inicial
               
+--FROM
 FROM `mm-datamart-kd.SERVICES.devices_base_osp` DEVICE
-
+  --Cruce con la tabla original de DWH
+LEFT JOIN `mm-datamart-kd.00_SANDBOX_DWH_ORANGE.osp_device` DEVICE_DWH
+  ON DEVICE.serial_number = DEVICE_DWH.SERIAL_NUMBER_ID
+  AND DEVICE.item_number = DEVICE_DWH.ORDER_ID
+  AND DEVICE.id_subscription_terminal = DEVICE_DWH.DEVICE_KEY
+  --Cruce con la tabla Maestro de SAP --Solo Orange
+LEFT JOIN `mm-commissions-reporting.TEMP.osp_maestro_device` SAP_MAESTRO
+  ON DEVICE.terminal_id = SAP_MAESTRO.DEVICE_MASTER_KEY
+  AND DEVICE_DWH.SAP_CODE_ID = SAP_MAESTRO.SAP_CODE_ID
+  --Cruce con la tabla de servicios
 LEFT JOIN `mm-commissions-reporting.40_INTEGRATION_COMMISSIONS.ventas_base_telco_osp` SALES
-         ON CAST(DEVICE.service_id AS STRING) = SALES.service_id AND DEVICE.brand_ds = SALES.brand_ds 
-
-LEFT JOIN (
-          SELECT channel_segment_ds, sfid_id
+  ON CAST(DEVICE.service_id AS STRING) = SALES.service_id
+  AND DEVICE.brand_ds = SALES.brand_ds
+  --Cruce con la jerarquia de SFIDS de Orange --solo se usa como ultima opcion y para sacar la provincia
+LEFT JOIN `mm-commissions-reporting.COMISIONES.jerarquia_orange` SFIDS_OSP
+  ON DEVICE.sfid_id = SFIDS_OSP.SFID
+  --Cruce con la vista de DEALERS de Power
+LEFT JOIN `mm-commissions-reporting.COMISIONES.dealer_ultima_version` DEALER
+  ON (DEVICE.sfid_id = DEALER.sfid_id
+        OR DEVICE.user_store = DEALER.sfid_id
+        OR COALESCE(UPPER(SPLIT(DEVICE.seller, "@")[OFFSET(0)]),DEVICE.seller) = DEALER.sfid_id
+      )
+  --Cruce con la tabla de ventas para obtener el channel_segment_ds --revisar
+LEFT JOIN
+  (SELECT channel_segment_ds, sfid_id
           FROM `mm-commissions-reporting.40_INTEGRATION_COMMISSIONS.ventas_base_telco_osp`
-          WHERE brand_ds IN ('ORANGE','JAZZTEL')
+  WHERE brand_ds IN ('ORANGE','JAZZTEL','SIMYO')
           QUALIFY ROW_NUMBER() OVER (PARTITION BY sfid_id ORDER BY activation_date DESC) = 1
           ) AS SALES_CHANNEL
          ON DEVICE.sfid_id = SALES_CHANNEL.sfid_id
+  --Cruce con el maestro SFID de Datamart
+LEFT JOIN `mm-commissions-reporting.TEMP.osp_maestro_sfid` SFID_MAESTRO
+  ON DEVICE.sfid_id = SFID_MAESTRO.SFID_ID
+  --Cruce con SFIDs mo
+LEFT JOIN `mm-datamart-kd.SERVICES.dm_sfids_mo` SFIDS_MO
+  ON DEVICE.sfid_id = SFIDS_MO.sfid_id
 
-LEFT JOIN `mm-commissions-reporting.COMISIONES.v_dealer_ultima_version` DEALER 
-         ON  (DEVICE.sfid_id = DEALER.sfid_id 
-                OR DEVICE.user_store = DEALER.sfid_id 
-                OR COALESCE(UPPER(SPLIT(DEVICE.seller, "@")[OFFSET(0)]),DEVICE.seller) = DEALER.sfid_id 
-             )
-
-LEFT JOIN (SELECT * FROM `mm-commissions-reporting.30_DIMENSIONS_COMMISSIONS.gs_control_agrupacion_canal`, UNNEST(SPLIT(agrupaciones_canal, ',')) agrupacion_canal) AGRUPACION
-         ON COALESCE( SALES_CHANNEL.channel_segment_ds, 'channel_segment_ds') = COALESCE(AGRUPACION.channel_segment_ds, 'channel_segment_ds')
-            AND DEVICE.master_channel_ds = AGRUPACION.master_channel_ds
-            AND DEVICE.channel_ds = AGRUPACION.channel_ds
-            AND DEVICE.subchannel_ds = AGRUPACION.subchannel_ds
-            AND DEVICE.comm_brand_ds = AGRUPACION.comm_brand_ds
-
-WHERE DEVICE.brand_ds IN ('ORANGE', 'JAZZTEL')
-
-     --  AND UPPER(DEVICE.terminal_name) NOT LIKE '%SMART TV%'
-     --  AND UPPER(DEVICE.terminal_name) NOT LIKE '%TCL GOOGLE TV%'
-     --  AND UPPER(DEVICE.terminal_name) NOT LIKE '%XIAOMI TV%'
-     --  AND UPPER(DEVICE.terminal_name) NOT LIKE '%XIAOMI GOOGLE TV%'
-     --  AND UPPER(DEVICE.terminal_name) NOT LIKE '%TCL ANDROID TV%'   
-
+--WHERE
+WHERE DEVICE.brand_ds IN ('ORANGE', 'JAZZTEL', 'SIMYO')
       AND (
-              /*CAPTACION*/
-           (
-              (
-               DEVICE.sell_type IN ('ALTA NUEVA', 'PORTABILIDAD','MIGRACION') 
-               AND DEVICE.terminal_status_ds IN ('EN FINANCIACION','LIQUIDACION')
-              )
-              OR
-              (
-               DEVICE.sell_type IN ('TERMINAL SIN SERVICIO') 
-               AND DEVICE.terminal_status_ds IS NULL
-              )
-              
-           ) 
-          OR
-           (      
-              /*RENUEVO*/            
-           DEVICE.sell_type IN ('RENOVE')
+  DEVICE.sell_type IN ('ALTA NUEVA', 'PORTABILIDAD','MIGRACION', 'RENOVE', 'TERMINAL SIN SERVICIO')
            AND (
-               expedition_status_ds IN ('CONFIRMACION ENTREGA','CONFIRMACIÓN ENTREGA','ENTREGADO')
-               OR DEVICE.terminal_status_ds = 'EN FINANCIACION'
-               OR DEVICE.terminal_status_ds = 'LIQUIDACION'
-               )
+    DEVICE.expedition_status_ds in ('CONFIRMACION ENTREGA', 'CONFIRMACIÓN ENTREGA', 'ENTREGADO', 'FINALIZADO')
+    OR DEVICE_DWH.DWH_STATUS_AGG_DES = 'ENTREGADO'
            )
           )
 
-
-QUALIFY RANK () OVER (
-                     PARTITION BY DEVICE.service_id, DEVICE.terminal_id
-                     ORDER BY CASE WHEN SALES.order_date <= DATE(DEVICE.order_date)
-                                   THEN COALESCE(SALES.order_date, '9999-12-31') END DESC,
-                              CASE WHEN SALES.order_date > DATE(DEVICE.order_date)
-                                   THEN COALESCE(SALES.order_date, '9999-12-31') END ASC,
-                              CASE WHEN COALESCE(SALES.activation_date, '9999-12-31') <= DATE(DEVICE.order_date)
-                                   THEN COALESCE(SALES.activation_date, '9999-12-31') END DESC,
-                              CASE WHEN COALESCE(SALES.activation_date, '9999-12-31') > DATE(DEVICE.order_date)
-                                   THEN COALESCE(SALES.activation_date, '9999-12-31') END ASC,
+--QUALIFY
+QUALIFY ROW_NUMBER() OVER (
+          PARTITION BY DEVICE.service_id, DEVICE.terminal_id, DEVICE.serial_number
+          ORDER BY
+              CASE WHEN SALES.order_date <= DATE(DEVICE.order_date) THEN COALESCE(SALES.order_date, '9999-12-31') END DESC,
+              CASE WHEN SALES.order_date > DATE(DEVICE.order_date) THEN COALESCE(SALES.order_date, '9999-12-31') END ASC,
+              CASE WHEN COALESCE(SALES.activation_date, '9999-12-31') <= DATE(DEVICE.order_date) THEN COALESCE(SALES.activation_date, '9999-12-31') END DESC,
+              CASE WHEN COALESCE(SALES.activation_date, '9999-12-31') > DATE(DEVICE.order_date) THEN COALESCE(SALES.activation_date, '9999-12-31') END ASC,
                               SALES.deactivation_date ASC,
                               CASE WHEN DEVICE.sfid_id = DEALER.sfid_id THEN 1 ELSE 2 END ASC,
                               DEALER.creado DESC  --Tomamos la última actualización
                      ) = 1
-
-
 ;
 
-END
+END;

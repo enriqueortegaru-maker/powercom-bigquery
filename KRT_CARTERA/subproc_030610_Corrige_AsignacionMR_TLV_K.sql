@@ -1,0 +1,20 @@
+BEGIN
+
+
+  --- PASO 1: ACTUALIZO EL MR ASIGNADO POR DEFECTO A CADA EQUIPO DE TLV EN BASE A PARAMETRIZACION FIJA
+  UPDATE `mm-commissions-reporting.KRT_CARTERA.MARCO_RETRIBUTIVO_TELEVENTASxCANAL`  m
+  SET m.marco_retributivo=p.MARCO_RETRIBUTIVO
+  from  `mm-commissions-reporting.KRT_CARTERA.PARAM_ESTATICO_ASIGNACION_MR_TLV_UPX_POR_EQUIPO` p 
+  where m.marca_ds=p.marca_ds 
+  and m.Canal =p.canal 
+  and m.subcanal=p.subcanal 
+  and m.equipo=p.equipo
+  and m.marco_retributivo!=p.MARCO_RETRIBUTIVO;
+
+
+
+  --- PASO 2: CREO TABLA LOG LOG_0306_MARCO_RETRIBUTIVO_TELEVENTASxCANAL
+  CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CARTERA.LOG_030610_MARCO_RETRIBUTIVO_TELEVENTASxCANAL_FIN` AS
+  SELECT * FROM `mm-commissions-reporting.KRT_CARTERA.MARCO_RETRIBUTIVO_TELEVENTASxCANAL`;
+
+END

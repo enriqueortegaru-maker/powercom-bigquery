@@ -1,0 +1,242 @@
+BEGIN
+
+-- !!!!!!! IMPORTANTE PARA EJEUCCIÓN. SE UTILIZA DAILY PARA PROVISIÓN Y REAL PARA DATOS A LIQUIDAR, EN EL PARÁMETRO ID_PROCESS.
+
+
+--CALL `mm-commissions-reporting.TERMINALES.EJEC_TERMINALES`('DAILY', 202610, '2026-10-01', '2026-10-01','2026-10-31')
+
+
+/*                                    PROCESOS TERMINALES
+
+!!!!!!!! IMPORTANTE QUEDA PENDIENTE AFINAR LA CONJUGACIÓN DE PROCESOS, CON LA FINALIDAD DE QUE SE RELACIONEN ENTRE ELLOS
+
+    -- SI SE DA UN WRONG_ADD EN UNA VENTA QUE GENERA UN DUPLICADO DE IMEI EN OTRA, EN ESTA OTRA DEBE QUEDAR LIBERADO.
+    -- SI SE DA UN CAMBIO DE IMEI, QUE DEBE EJECUTARSE ANTES DEL WRONG_ADD, DEBE VALIDARSE EL DUPLICADO DE IMEI DE NUEVO Y DE IGUAL MODO LIBERAR SI ESTE CAMBIO LIBERA UN DUPLICADO.
+
+    SE TRABAJARÁ DESPUÉS DE LA PRESENTE LIQUIDACIÓN, YA QUE QUEDA PENDIENTE DESARROLLO SOBRE CAMBIO DE IMEI Y CÓMO ESTE SE EJECUTA EN EL NUEVO ENTORNO MYSIM
+
+     
+*/
+
+
+
+  if ID_PROCESS = 'REAL' then 
+
+ --     CALL `mm-commissions-reporting.TERMINALES.pr_device_base_dealer`();
+
+      delete from `mm-commissions-reporting.TERMINALES.TERMINALES` where id_mes = MES and process_code = 'DAILY';
+
+
+      /*  COMMISSION_ID --> SUBS/PAYT/PAY2
+        EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE TERMINALES EN TABLA INTERMEDIA. PUDIENDO EJECUTAR POR PROCESOS ID DE PROCESO PRINCIPAL*/
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_terminales`(ID_PROCESS, MES,MES_LIQUIDADO,ACTI_INI_PR,ACTI_FINAL_PR);
+
+      /* COMMISSION_ID --> WRON
+
+          EJECUTAMOS WRONG_ADD ANTES DE DUPLICADO DE IMEI A 04 DE DICIEMBRE, PUES ESTÁ PENDIENTE AJUSTAR LA CONJUGACIÓN DE PROCESOS, 
+          Y EL DUPLI IMEI SE BASA EN ESTE PROCESO PREVIO PARA LIBERAR LOS SUBSIDIOS POSTERIORES A LA VENTA ERRÓNEA  
+      */
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_WRONG_ADD`(ID_PROCESS, MES, MES_LIQUIDADO, ACTI_INI_PR, ACTI_final_pr);
+
+      /* COMMISSION_ID --> DUPL 
+
+        EJECUTAMOS PROCESO VALIDADOR DE DUPLICADOS DE IMEI SOBRE TODA LA TABLA TERMINALES (CONTIENE UNA INGESTA HISTÓRICA DESDE ENE - 2022 PROVENIENTE DE IFS)
+
+      */
+
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_dupli_terminales`(ID_PROCESS, MES, MES_LIQUIDADO);
+
+
+      /*                                    PROCESOS OTHER COMISSION
+
+
+      !!!!!!!!!!!!!! IMPORTANTE ANTES DE LANZAR PROCESO FINAL ES NECESARIO TENER PEGADOS EN LOS DISTINTOS GOOGLE SHEET LA INFORMACIÓN EXTERNA RECIBIDA
+
+      */
+      
+
+      /* COMMISSION_ID --> REP
+
+        EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE REPARACIONES ANOVO
+
+      */
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_terminales_REPARACIONES`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+      /* COMMISSION_ID --> DOA
+
+        EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE DOAS ANOVO
+
+      */
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_terminales_DOA`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+      /* COMMISSION_ID --> C_SIM
+
+        EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE CAMBIOS DE SIM DATA (AHORA MISMO ES LA INFORMACIÓN QUE SE RECIBÍA EN IFS)
+
+      */
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_terminales_CAMBIO_SIM`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+
+      /* COMMISSION_ID --> Q25
+
+        EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE Q25 DATA (AHORA MISMO ES LA INFORMACIÓN QUE SE RECIBÍA EN IFS)
+
+
+      */
+
+      CALL `mm-commissions-reporting.TERMINALES.pr_terminales_Q25`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+  end if;
+
+
+  if ID_PROCESS = 'DAILY' then 
+
+--    CALL `mm-commissions-reporting.TERMINALES.pr_device_base_dealer`();
+
+    delete from `mm-commissions-reporting.TERMINALES.TERMINALES` where id_mes = MES and process_code = 'DAILY';
+    delete from `mm-commissions-reporting.TERMINALES.PROVISIONES` where id_mes = MES and process_code = 'DAILY';
+
+
+    /*  COMMISSION_ID --> SUBS/PAYT/PAY2
+      EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE TERMINALES EN TABLA INTERMEDIA. PUDIENDO EJECUTAR POR PROCESOS ID DE PROCESO PRINCIPAL*/
+
+    CALL `mm-commissions-reporting.TERMINALES.pr_terminales`(ID_PROCESS, MES,MES_LIQUIDADO,ACTI_INI_PR,ACTI_FINAL_PR);
+
+    /* COMMISSION_ID --> WRON
+
+        EJECUTAMOS WRONG_ADD ANTES DE DUPLICADO DE IMEI A 04 DE DICIEMBRE, PUES ESTÁ PENDIENTE AJUSTAR LA CONJUGACIÓN DE PROCESOS, 
+        Y EL DUPLI IMEI SE BASA EN ESTE PROCESO PREVIO PARA LIBERAR LOS SUBSIDIOS POSTERIORES A LA VENTA ERRÓNEA  
+    */
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_WRONG_ADD`(ID_PROCESS, MES, MES_LIQUIDADO, ACTI_INI_PR, ACTI_final_pr);
+
+    /* COMMISSION_ID --> DUPL 
+
+      EJECUTAMOS PROCESO VALIDADOR DE DUPLICADOS DE IMEI SOBRE TODA LA TABLA TERMINALES (CONTIENE UNA INGESTA HISTÓRICA DESDE ENE - 2022 PROVENIENTE DE IFS)
+
+    */
+
+
+    CALL `mm-commissions-reporting.TERMINALES.pr_dupli_terminales`(ID_PROCESS, MES, MES_LIQUIDADO);
+
+
+    /*                                    PROCESOS OTHER COMISSION
+
+
+    !!!!!!!!!!!!!! IMPORTANTE ANTES DE LANZAR PROCESO FINAL ES NECESARIO TENER PEGADOS EN LOS DISTINTOS GOOGLE SHEET LA INFORMACIÓN EXTERNA RECIBIDA
+
+    */
+    
+
+    /* COMMISSION_ID --> REP
+
+      EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE REPARACIONES ANOVO
+
+    */
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_terminales_REPARACIONES`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+    /* COMMISSION_ID --> DOA
+
+      EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE DOAS ANOVO
+
+    */
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_terminales_DOA`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+    /* COMMISSION_ID --> C_SIM
+
+      EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE CAMBIOS DE SIM DATA (AHORA MISMO ES LA INFORMACIÓN QUE SE RECIBÍA EN IFS)
+
+    */
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_terminales_CAMBIO_SIM`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+
+    /* COMMISSION_ID --> Q25
+
+      EJECUTAMOS CÁLCULO/INSERT/ETL DE DATOS DE Q25 DATA (AHORA MISMO ES LA INFORMACIÓN QUE SE RECIBÍA EN IFS)
+
+
+    */
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_terminales_Q25`(ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+    /* COMMISSION_ID --> ESTIMACION
+    
+      EJECUTAMOS CÁLCULO/INSERT DE LA ESTIMACIÓN DE DÍAS HASTA EL ÚLTIMO DÍA DE MES
+
+    */
+
+    CALL `mm-commissions-reporting.TERMINALES.pr_estimacion` (ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_estimacion_dic25` (ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+  --  CALL `mm-commissions-reporting.TERMINALES.pr_estima_postventas` (ID_PROCESS, MES,MES_LIQUIDADO, ACTI_INI_PR,ACTI_FINAL_PR);
+
+    -- CREAMOS INSERT EN TABLA PROVISIONES DE LOS DATOS GENERADOS EN TABLA TERMINALES 
+
+  /*
+    INSERT INTO `mm-commissions-reporting.TERMINALES.PROVISIONES` (
+
+    SELECT * FROM `mm-commissions-reporting.TERMINALES.TERMINALES` where id_mes = MES and ID_PROCESS = 'DAILY'
+
+    );
+  */
+
+
+    -- EXTRACTOR DE DATOS PARA PROVISIÓN - FORMATO SAP
+    SELECT 
+    'SAC' AS opex, 
+    'S3' AS CLASE, 
+    'X001'sociedad,
+    '' as razon_social,
+    ROUND(SUM(comision),2) as comision,
+    CASE WHEN tipo_concepto = 'FINT' THEN '43002004'
+          WHEN tipo_concepto = 'SRCI' THEN '60722115'
+          WHEN tipo_concepto = 'SUBS' THEN '60722114'
+          WHEN TIPO_CONCEPTO = 'DOAC' THEN '60000001'
+          WHEN tipo_concepto = 'DUSI' THEN '62335000'
+          WHEN tipo_concepto = 'COPM' THEN '62335000'
+          END CUENTA_CONTABLE,
+      CASE WHEN tipo_concepto = 'FINT' THEN ''
+          WHEN tipo_concepto = 'SRCI' THEN 'X0SL'
+          WHEN tipo_concepto = 'SUBS' THEN 'X0SL'
+          WHEN TIPO_CONCEPTO = 'DOAC' THEN 'X0RES030'
+          WHEN tipo_concepto = 'DUSI' THEN 'X0SL'
+          WHEN tipo_concepto = 'COPM' THEN 'X0SL'
+          END centro_coste,
+        null as orden,
+        cod_producto,
+        cod_tipo_contrato,
+        cod_segmento,
+        '999' as operador,
+        cod_canal,
+        cod_marca, 
+        null as gl, 
+        'PROVI_TERMINALES' AS ASIGNACION,
+        NULL AS TEXTO,agrupacion_canal,
+        zona_fiscal
+
+          FROM `mm-commissions-reporting.TERMINALES.PROVISIONES`
+          WHERE 
+          id_mes = MES
+  --        and marca='YOIGO'
+          GROUP BY ALL;
+
+  end if;
+
+
+  if ID_PROCESS = 'DIARIO' then 
+    delete from `mm-commissions-reporting.TERMINALES.TERMINALES` where process_code = 'DIARIO';
+    CALL `mm-commissions-reporting.TERMINALES.pr_terminales`(ID_PROCESS, MES,MES_LIQUIDADO,ACTI_INI_PR,ACTI_FINAL_PR); --calculamos mes solicitado, el actual --> mes N
+    -- CALL `mm-commissions-reporting.TERMINALES.pr_terminales`('DIARIO',CAST(CONCAT(SUBSTR(CAST((DATE_TRUNC(CURRENT_DATE(), MONTH) - 1) AS STRING),1,4),SUBSTR(CAST((DATE_TRUNC(CURRENT_DATE(), MONTH) - 1) AS STRING),6,2)) AS INT64),DATE_TRUNC((DATE_TRUNC(CURRENT_DATE(), MONTH) - 1), MONTH),DATE_TRUNC((DATE_TRUNC(CURRENT_DATE(), MONTH) - 1), MONTH),LAST_DAY((DATE_TRUNC(CURRENT_DATE(), MONTH) - 1), MONTH)); --calculamos mes anterior al solicitado --> mes N-1
+  end if;
+
+end

@@ -1,0 +1,17 @@
+BEGIN
+
+
+	--- PASO1: CREO TABLAS INTERMEDIAS
+	CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CARTERA.HISTORICO_VENTAS_CARTERA_EN_PROCESO` 
+	OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) AS	
+	SELECT * FROM `mm-commissions-reporting.KRT_CARTERA.f_vt_historico_ventas_cartera_en_proceso`(vdesde, vhasta);
+
+
+	--- PASO2: ACTUALIZO HISTORICO COMISIONES Y DECOMISIONES FACTURADAS
+	--DELETE FROM `mm-commissions-reporting.KRT_CARTERA.HISTORICO_COMISIONES_CAPTACION_FACTURADO` where mes_comision_dt=vmes_comision_dt;
+	DELETE FROM `mm-commissions-reporting.KRT_CARTERA.HISTORICO_VENTAS_CARTERA`  where mes_factura_dt=PARSE_DATE("%Y%m%d", CAST(VDESDE AS STRING));	
+	INSERT INTO `mm-commissions-reporting.KRT_CARTERA.HISTORICO_VENTAS_CARTERA`  
+	SELECT * FROM `mm-commissions-reporting.KRT_CARTERA.HISTORICO_VENTAS_CARTERA_EN_PROCESO`;
+
+		
+END

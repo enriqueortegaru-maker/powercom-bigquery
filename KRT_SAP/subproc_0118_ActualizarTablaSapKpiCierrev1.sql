@@ -1,0 +1,46 @@
+BEGIN
+
+
+	DECLARE VHASTA INT64;
+	DECLARE VMES_FACTURA_DT, VFECHA_CALC_DT DATE;
+	--DECLARE VDESDE INT64; SET VDESDE=20260201; 	
+	SET VMES_FACTURA_DT= PARSE_DATE('%Y%m%d',CAST(VDESDE AS STRING));
+	SET VFECHA_CALC_DT=CURRENT_DATE('Europe/Madrid');
+	SET VHASTA=CAST(FORMAT_DATE("%Y%m%d",LAST_DAY(PARSE_DATE("%Y%m%d",CAST(VHASTA AS STRING)))) AS INT64);
+
+
+	--- PASO 1: CREO TABLA INTERMEDIA
+
+
+		CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_SAP.SAP_KPI_CIERRE_EN_PROCESO` AS 
+		SELECT * FROM `mm-commissions-reporting.KRT_SAP.f_vt_sap_kpi_cierre_en_proceso`(vdesde);	
+
+
+	--- PASO 4: ACTUALIZO TABLA AGG
+
+		DELETE FROM `mm-commissions-reporting.KRT_SAP.AGG_SAP_KPI_CIERRE` 
+		where fecha_calc_dt=VFECHA_CALC_DT
+		and mes_factura_dt=VMES_FACTURA_DT;	
+
+		INSERT INTO `mm-commissions-reporting.KRT_SAP.AGG_SAP_KPI_CIERRE`  
+		SELECT VFECHA_CALC_DT, * FROM `mm-commissions-reporting.KRT_SAP.SAP_KPI_CIERRE_EN_PROCESO`;
+
+
+	--- PASO 1: GESTION SAP_INF_CIERRE
+
+
+		CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_SAP.SAP_INF_CIERRE_EN_PROCESO` AS 
+		SELECT * FROM `mm-commissions-reporting.KRT_SAP.f_vt_sap_kpi_cierre_en_proceso_v2`(vdesde);	
+		
+		DELETE FROM `mm-commissions-reporting.KRT_SAP.AGG_SAP_INF_CIERRE` 
+		where fecha_calc_dt=VFECHA_CALC_DT
+		and mes_factura_dt=VMES_FACTURA_DT;	
+
+		INSERT INTO `mm-commissions-reporting.KRT_SAP.AGG_SAP_INF_CIERRE`  
+		SELECT VFECHA_CALC_DT,
+		VMES_FACTURA_DT, 
+		* FROM `mm-commissions-reporting.KRT_SAP.SAP_INF_CIERRE_EN_PROCESO`;
+
+	
+		
+END

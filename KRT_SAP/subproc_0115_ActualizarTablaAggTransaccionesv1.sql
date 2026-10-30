@@ -1,0 +1,107 @@
+BEGIN
+
+	DECLARE VHASTA INT64;
+	DECLARE VFECHA_CALC_DT, VMES_FACTURA_DT DATE;
+	SET VMES_FACTURA_DT= PARSE_DATE('%Y%m%d',CAST(VDESDE AS STRING));
+	SET VHASTA=CAST(FORMAT_DATE("%Y%m%d",LAST_DAY(PARSE_DATE("%Y%m%d",CAST(VHASTA AS STRING)))) AS INT64);
+	SET VFECHA_CALC_DT=CURRENT_DATE('Europe/Madrid');
+
+
+	--- PASO 1: BORRO REGISTROS DE TABLA TRANSACCIONES CALCULADOS EN EL DIA ACTUAL PARA VENTANA DE COMISIONADO ESPECIFICADA
+	DELETE FROM `mm-commissions-reporting.KRT_SAP.AGG_TRANSACCIONES` where fecha_calc_dt=vfecha_calc_dt and mes_factura_dt=VMES_FACTURA_DT and data_source_ds in ("EKTNET","TCNET","R");	
+
+	--- PASO 2: INSERTO REGISTROS DE TABLA TRANSACCIONES REGISTRADOS EN EL DIA DE CALCULO
+	INSERT INTO `mm-commissions-reporting.KRT_SAP.AGG_TRANSACCIONES`  
+	Select current_date() as fecha_calc_dt,
+	commission_id,
+	estado,
+	mes_factura_dt,
+	mes_liquidado,
+	id_mes,
+	agrupacion_canal,
+	canal,
+	subcanal,
+	concepto,
+	tipo_concepto,
+	unidades,
+	comision,
+	id_comisionista,
+	distribuidor,
+	sfid_id,
+	seller,
+	nombre_comercio,
+	razon_social,
+	cif,
+	zona_fiscal,
+	marca,
+	service_type,
+	phone_nm,
+	tariff_id,
+	tariff_ds,
+	service_id,
+	account_id,
+	customer_id,
+	line_type_ds,
+	bundle_type,
+	technology_ds,
+	billing_type_ds,
+	sale_date,
+	activation_date,
+	deactivation_date,
+	order_id,
+	order_type_agg,
+	cod_segmento,
+	cod_marca,
+	cod_tipo_contrato,
+	cod_producto,
+	cod_canal,
+	campaign_code,
+	serial_number,
+	tax_base,
+	claim_code,
+	process_code,
+	comments,
+	facturador,
+	proceso_sap,
+	id_registro,
+	invoice_id,
+	sociedad,
+	bp,
+	cuenta_contable,
+	centro_coste,
+	documento_sap,
+	documento_sap_posicion,
+	fecha_contabilizacion,
+	creado,
+	modificado,
+	id_factura_drive,
+	emails_acceso_trazabilidad,
+	segmento,
+	orden,
+	clase_concepto,
+	concepto_ds_gekt,
+	concepto_lista_ds_gekt,
+	concepto_origen_ds_gekt,
+	tariff_id_origin,
+	tariff_ds_origin,
+	customer_dni,
+	service_id_origin,
+	operation,
+	operation_type,
+	canal_gekt,
+	subcanal_gekt,
+	marco,
+	causa_baja_agrup,
+	causa_baja,
+	distribuidor_gekt,
+	categoria_servicio_ds,
+	clase,
+	tipo,
+	concepto_factura_ds,
+	data_source_ds,
+	canal_mo
+
+	from `mm-commissions-reporting.KRT_SAP.TRANSACCIONES_EN_PROCESO`;
+
+		
+END

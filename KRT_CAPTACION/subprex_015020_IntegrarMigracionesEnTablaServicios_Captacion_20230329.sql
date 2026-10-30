@@ -1,0 +1,42 @@
+BEGIN
+
+
+
+    --- PASO 1.0: CREO LOG INICIAL 
+
+    CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_015020_SERVICIOS_CAPTACION_INICIAL` AS
+    SELECT * FROM `mm-commissions-reporting.KRT_CAPTACION.SERVICIOS_CAPTACION`;
+
+
+    --- PASO 2.0: BORRO DE LA TABLA DE SERVICIOS, LOS SERVICIOS MIGRADOS A CANALES NO INFORMADOS 
+    DELETE 
+    from `mm-commissions-reporting.KRT_CAPTACION.SERVICIOS_CAPTACION` s
+    where exists(
+      select 1 from `mm-commissions-reporting.KRT_CAPTACION.LOG_015000_SERVICIOS_CAPTACION_MIGRADOS_CAN_NO_INF`c
+      where c.marca_ds=s.marca_ds
+      and c.cliente_id=s.cliente_id
+      and c.categoria_servicio_ds=s.categoria_servicio_ds
+      and c.servicio_id=s.servicio_id 
+    ); 
+
+  --- PASO 2.1: INSERTO EN LA TABLA DE SERVICIOS, LOS SERVICIOS MIGRADOS A CANALES NO INFORMADOS 
+
+
+    CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_015020_SERVICIOS_CAPTACION_ALTA_Y_MIGRACION` AS
+    SELECT * FROM `mm-commissions-reporting.KRT_CAPTACION.LOG_015000_SERVICIOS_CAPTACION_MIGRADOS_CAN_INF`  
+    UNION ALL
+    SELECT * FROM  `mm-commissions-reporting.KRT_CAPTACION.LOG_015010_SERV_BASICOS_MIGRADOS_AGENTES_MIG`
+    UNION ALL
+    SELECT * FROM `mm-commissions-reporting.KRT_CAPTACION.LOG_015010_SVAS_MIGRADOS_AGENTES_MIG`;
+
+
+    CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.SERVICIOS_CAPTACION` AS
+    SELECT * FROM `mm-commissions-reporting.KRT_CAPTACION.SERVICIOS_CAPTACION`  
+    UNION ALL
+    SELECT * FROM  `mm-commissions-reporting.KRT_CAPTACION.LOG_015020_SERVICIOS_CAPTACION_ALTA_Y_MIGRACION`;
+
+
+    CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_015020_SERVICIOS_CAPTACION_FINAL` AS
+    SELECT * FROM `mm-commissions-reporting.KRT_CAPTACION.SERVICIOS_CAPTACION`;
+
+END

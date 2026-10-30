@@ -1,0 +1,22 @@
+BEGIN
+
+  CASE when contains_substr(origenDatos, "contrato") THEN
+				INSERT INTO  `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL`
+				SELECT distinct * FROM `mm-commissions-reporting.KRT_CAPTACION.PENALIZACIONESxPORTABILIDAD_INTRAGRUPOxCONTRATO_DATAMARK_KD`;
+
+				CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_050120_MARCO_RETRIBUTIVOxCANAL_INCR` AS 
+				select distinct * from `mm-commissions-reporting.KRT_CAPTACION.PENALIZACIONESxPORTABILIDAD_INTRAGRUPOxCONTRATO_DATAMARK_KD`; 
+
+ 			when contains_substr(origenDatos, "pedido") THEN
+				INSERT INTO  `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL`
+				SELECT distinct * FROM `mm-commissions-reporting.KRT_CAPTACION.PENALIZACIONESxPORTABILIDAD_INTRAGRUPOxPEDIDO_DATAMARK_KD`;
+
+				CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_050120_MARCO_RETRIBUTIVOxCANAL_INCR` AS 
+				select distinct * from `mm-commissions-reporting.KRT_CAPTACION.PENALIZACIONESxPORTABILIDAD_INTRAGRUPOxPEDIDO_DATAMARK_KD`; 
+
+	END CASE;
+
+  CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_050120_MARCO_RETRIBUTIVOxCANAL` AS 
+  select * from `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL`; 
+
+END

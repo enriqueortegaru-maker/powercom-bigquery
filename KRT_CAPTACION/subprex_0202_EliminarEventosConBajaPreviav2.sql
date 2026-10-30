@@ -1,0 +1,122 @@
+BEGIN
+
+  declare desde_id INT64;
+  set desde_id=CAST(FORMAT_DATE("%Y%m%d",date_trunc(date_sub(parse_date ('%Y%m%d', CAST ( DESDE AS string) ), interval 1 month),month)) as integer);
+  --set desde_id=CAST(FORMAT_DATE("%Y%m%d",date_trunc(date_sub(parse_date ('%Y%m%d', CAST ( 20220501 AS string) ), interval 1 month),month)) as integer);
+  --set HASTA=20220531;
+
+
+
+
+  ---  PASO 0: Creo Log previo
+    CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_0202_MARCO_RETRIBUTIVOxCANAL_PREV` AS
+    SELECT * FROM `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL` ;
+
+  ---  PASO 1: Identifico registros a borrar por cumplir condiciones de baja previa
+  CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.UNITARIOS_BAJA_PREVIA` AS  
+
+  --declare desde, hasta, desde_id INT64;
+  --set desde=20230301;
+  --set hasta=20230317;  
+  --set desde_id=CAST(FORMAT_DATE("%Y%m%d",date_trunc(date_sub(parse_date ('%Y%m%d', CAST ( DESDE AS string) ), interval 1 month),month)) as integer);
+
+    SELECT * 
+    FROM
+      --`mm-commissions-reporting.KRT_CAPTACION.LOG_0201_MARCO_RETRIBUTIVOxCANAL` A
+      `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL` A
+    WHERE
+      EXISTS (
+        SELECT
+          *
+        FROM (
+                SELECT
+                  cliente_id,
+                  marca_ds,
+                  categoria_servicio_ds
+                FROM
+                  `dw-cloud-euskaltel-prod-283409.D50_EDW.SERVICIOS` s
+                WHERE                                                   -- Condiciones para borrado en tabla MARCO_RETRIBUTIVOxCANAL 
+                  fecha_rfb_id < desde_id                                   -- Fecha de Rfb anterior a primer día del mes anterior a nueva contratación
+                  AND fecha_baja_id BETWEEN desde_id AND HASTA              -- Fecha de baja entre primer día del mes anterior y ultimo día del periodo de comisionamiento
+                  AND fecha_rfb_id < fecha_baja_id                          -- Fecha de de Rfb anterior a fecha de baja
+                  AND servicio_id_destino < 0                               -- Servicio destino inferior a 0 (alta no relacionada con migración de servicio)  
+                  AND contains_substr(operacion_baja_ds,"baja")
+                  --AND NOT contains_substr(operacion_baja_ds,"evolucion")
+                  --AND NOT contains_substr(operacion_baja_ds,"downgrade")                  
+                  AND EXISTS(                                               -- Tripleta cliente_id, marca_ds, categoria_ds existe en tabla MARCO_RETRIBUTIVOxCANAL 
+                    SELECT                                        
+                      *
+                    FROM (
+                          SELECT
+                            DISTINCT cliente_id,                  
+                            marca_ds,
+                            categoria_servicio_ds
+                          FROM
+                            `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL`) t
+                            --`mm-commissions-reporting.KRT_CAPTACION.LOG_0201_MARCO_RETRIBUTIVOxCANAL`) t
+                    WHERE
+                      s.cliente_id = t.cliente_id
+                      AND s.marca_ds = t.marca_ds
+                      AND s.categoria_servicio_ds = t.categoria_servicio_ds 
+                    )
+              
+              ) b  --- tripletas cliente_id, marca_ds y categoria_servicio_ds que forman parte del marco_retributivoxcanal y cumplen con condiciones de borrado
+        WHERE
+          a.cliente_id = b.cliente_id
+          AND a.marca_ds = b.marca_ds
+          AND a.categoria_servicio_ds = b.categoria_servicio_ds
+      );
+
+  ---  PASO 3: Ejecuto borrado de regsitros con baja previa
+
+  DELETE FROM `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL` uni
+    WHERE
+      EXISTS (
+        SELECT
+          *
+        FROM `mm-commissions-reporting.KRT_CAPTACION.UNITARIOS_BAJA_PREVIA` bp
+        WHERE
+          uni.cliente_id = bp.cliente_id
+          AND uni.marca_ds = bp.marca_ds
+          AND uni.categoria_servicio_ds = bp.categoria_servicio_ds
+      );
+
+
+  ---  PASO 3: Vuelco LOGS 
+
+    -- Log de fichero completo      
+    CREATE OR REPLACE TABLE
+      `mm-commissions-reporting.KRT_CAPTACION.LOG_0202_MARCO_RETRIBUTIVOxCANAL` AS
+    SELECT 
+    *
+    FROM
+      `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL` ;
+
+
+    -- Log de incremento
+    CREATE OR REPLACE TABLE
+      `mm-commissions-reporting.KRT_CAPTACION.LOG_0202_MARCO_RETRIBUTIVOxCANAL_DEL` AS
+    SELECT 
+      * 
+    FROM 
+      `mm-commissions-reporting.KRT_CAPTACION.LOG_0202_MARCO_RETRIBUTIVOxCANAL_PREV`
+    EXCEPT DISTINCT
+    SELECT
+      * 
+    FROM  
+      `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL`;
+
+
+
+  ---  PASO 4: Creo tabla UNITARIOS
+
+    -- Log de fichero completo      
+    CREATE OR REPLACE TABLE
+      `mm-commissions-reporting.KRT_CAPTACION.UNITARIOS` AS
+    SELECT 
+    *
+    FROM
+      `mm-commissions-reporting.KRT_CAPTACION.MARCO_RETRIBUTIVOxCANAL` ;
+
+    
+END

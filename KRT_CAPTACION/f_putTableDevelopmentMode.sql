@@ -1,0 +1,5 @@
+BEGIN
+
+      INSERT INTO `mm-commissions-reporting.KRT_CAPTACION.FLUJO_UPD_TABLAS_PRINCIPALES` VALUES(CURRENT_DATE(),CURRENT_TIME(),vnombre,vdesde, vhasta,666);
+
+END

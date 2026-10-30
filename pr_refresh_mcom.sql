@@ -1,5 +1,7 @@
 begin
 
+--CAMBIO PARA PROBAR GIT
+
 -- call `mm-commissions-reporting.SANDBOX.pr_refresh_mcom`()
 
 call `mm-commissions-reporting.NO_EXCLUSIVO.pr_comisiones_working_mcom`(date_trunc(date_add (current_date (), interval -1 month), month));

@@ -1,0 +1,10 @@
+BEGIN
+
+  CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CARTERA.COMISIONES_B2B` AS
+  SELECT distinct * FROM `mm-commissions-reporting.KRT_CARTERA.LOG_040410_COMISIONES_EROSKI`
+  UNION ALL 
+  SELECT distinct * FROM `mm-commissions-reporting.KRT_CARTERA.LOG_040420_COMISIONES_BA_RACC`
+  UNION ALL
+  SELECT distinct * FROM `mm-commissions-reporting.KRT_CARTERA.LOG_040420_COMISIONES_SOMO_RACC`;
+
+END

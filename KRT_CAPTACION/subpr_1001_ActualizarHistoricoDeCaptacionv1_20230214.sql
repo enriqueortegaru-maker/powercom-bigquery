@@ -1,0 +1,49 @@
+BEGIN
+	DECLARE vMES_COMISION_ID INT64;
+--	DECLARE vMES_COMISION_ID, DESDE,HASTA INT64;
+	DECLARE vMES_COMISION_DT DATE;	
+--	SET DESDE=20221201;
+--	SET HASTA=20221208;
+	SET	vMES_COMISION_ID= CAST(FORMAT_DATE("%Y%m",DATE_TRUNC(PARSE_DATE('%Y%m%d', CAST ( DESDE AS string)),month)) AS INT64); 
+	SET vMES_COMISION_DT=DATE_TRUNC(PARSE_DATE('%Y%m%d', CAST ( DESDE AS string)),month);
+
+--	SELECT DESDE, HASTA, vMES_COMISION_ID, vMES_COMISION_DT;
+
+		--- COMISIONES
+	DELETE
+	FROM
+		`mm-commissions-reporting.KRT_CAPTACION.ACC_CAPTACION_HISTORICO` AS h
+	WHERE
+		h.mes_comision_dt=vMES_COMISION_DT
+		and h.VERSION=VERSION_FL;
+
+	CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_CAPTACION.LOG_1001_ACC_CAPTACION_HISTORICO_ADD` AS 
+	SELECT 
+		distinct c.* , version_fl as VERSION, vMES_COMISION_DT as mes_comision_dt
+	FROM
+		`mm-commissions-reporting.KRT_CAPTACION.COMISIONES` AS c; 
+
+	INSERT INTO
+		`mm-commissions-reporting.KRT_CAPTACION.ACC_CAPTACION_HISTORICO`
+	SELECT 
+		c.mes_comision_dt,c.* except(PLAYS_RFB, VERSION, mes_comision_dt), version_fl
+	FROM
+		`mm-commissions-reporting.KRT_CAPTACION.LOG_1001_ACC_CAPTACION_HISTORICO_ADD` AS c; 
+		
+
+		--- CLAWBACK
+	DELETE
+	FROM
+		`mm-commissions-reporting.KRT_CAPTACION.CLAWBACK_HISTORICO` AS h
+	WHERE
+		h.mes_decomision_id=vMES_COMISION_ID
+		and h.VERSION=VERSION_FL;
+
+	INSERT INTO
+		`mm-commissions-reporting.KRT_CAPTACION.CLAWBACK_HISTORICO`
+	SELECT
+		DISTINCT * , version_fl
+	FROM
+		`mm-commissions-reporting.KRT_CAPTACION.CLAWBACK`;
+
+END

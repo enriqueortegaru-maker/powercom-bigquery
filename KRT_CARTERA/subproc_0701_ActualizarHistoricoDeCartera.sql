@@ -1,0 +1,34 @@
+BEGIN
+    DECLARE  DESDE_DT, HASTA_DT, DESDE_6M_DT date;
+	  DECLARE	MES_COMISION INT64;    
+    SET HASTA_DT = parse_date ('%Y%m%d', CAST ( HASTA AS string) );
+    SET DESDE_DT = parse_date ('%Y%m%d', CAST ( DESDE AS string) );
+    --SET DESDE_6M_DT=DATE_SUB(DESDE_DT, INTERVAL 6 MONTH);
+	  SET	MES_COMISION= CAST(FORMAT_DATE("%Y%m",DATE_TRUNC(PARSE_DATE('%Y%m%d', CAST ( DESDE AS string)),month)) AS INT64); 
+
+
+
+    -- PASO 1: ACTUALIZO HISTORICO DE COMISIONES
+    DELETE FROM `mm-commissions-reporting.KRT_CARTERA.CARTERA_HISTORICO`
+    WHERE mes_comision_id=MES_COMISION;
+    --WHERE CAST(Fecha_Activacion AS date) BETWEEN DESDE_DT AND HASTA_DT;    
+
+    INSERT INTO `mm-commissions-reporting.KRT_CARTERA.CARTERA_HISTORICO`
+    SELECT * 
+    FROM
+      `mm-commissions-reporting.KRT_CARTERA.COMISIONES`;    
+
+
+    -- PASO 2: ACTUALIZO HISTORICO DE DECOMISIONES
+    DELETE FROM `mm-commissions-reporting.KRT_CARTERA.DECOMISIONES_HISTORICO`
+    WHERE mes_decomision_id=MES_COMISION;    
+    --WHERE CAST(Fecha_Activacion AS date) BETWEEN DESDE_DT AND HASTA_DT;
+
+    INSERT INTO `mm-commissions-reporting.KRT_CARTERA.DECOMISIONES_HISTORICO`
+    SELECT * 
+    FROM
+      `mm-commissions-reporting.KRT_CARTERA.DECOMISIONES`;    
+
+
+
+END

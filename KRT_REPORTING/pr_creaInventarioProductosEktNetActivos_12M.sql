@@ -1,0 +1,7 @@
+BEGIN 
+
+  CREATE OR REPLACE TABLE `mm-commissions-reporting.KRT_REPORTING.INV_PRODUCTOS_EKTNET_12M` 
+  PARTITION BY RANGE_BUCKET(idCliente, GENERATE_ARRAY(0, 1000000007, 250063)) AS 
+  SELECT * FROM `mm-commissions-reporting.KRT_REPORTING.f_vt_debugInventarioProductosEktnet_12M`();
+
+END

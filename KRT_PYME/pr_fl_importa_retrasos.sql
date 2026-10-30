@@ -1,0 +1,73 @@
+BEGIN
+
+	INSERT INTO `mm-commissions-reporting.KRT_PYME.COMISIONES` 
+	(
+		mes_id,
+		data_source_ds,
+		brand_ds,
+		channel_ds,
+		subchannel_ds,
+		distribuidor,
+		sfid_id,
+		service_type,
+		tariff_id,
+		tariff_ds,
+		customer_id,
+		service_id,
+		id,
+		id_subscription_terminal,
+		total_pay_value_without_vat,
+		total_pay_value,
+		phone_nm,
+		sell_type,
+		order_type_agg,
+		tipo,
+		operacion,
+		seller,
+		comisiona,
+		concepto_marco,
+		concepto,
+		marco,
+		orden,
+		importe,
+		sale_date,
+		activation_date,
+		deactivation_date
+	) 
+	SELECT distinct
+		mes_id,
+		data_source_ds,
+		brand_ds,
+		channel_ds,
+		subchannel_ds,
+		distribuidor,
+		sfid_id,
+		service_type,
+		tariff_id,
+		tariff_ds,
+		customer_id,
+		service_id,
+		id,
+		id_subscription_terminal,
+		total_pay_value_without_vat,
+		total_pay_value,
+		phone_nm,
+		sell_type,
+		order_type_agg,
+		tipo,
+		operacion,
+		seller,
+		comisiona,
+		concepto_marco,
+		concepto,
+		marco,
+		orden,
+		importe,
+		SAFE_CAST(sale_date  AS DATETIME),
+		SAFE_CAST(activation_date AS DATETIME),
+		SAFE_CAST(deactivation_date AS DATE)	
+  FROM `mm-commissions-reporting.KRT_PYME.PARAM_KRT_PYME_RETRASOS`
+	where mes_id=vmes_id; 
+
+
+END

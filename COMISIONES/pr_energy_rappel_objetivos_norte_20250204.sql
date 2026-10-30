@@ -1,0 +1,51 @@
+begin
+
+     declare prefijo, mes_string string;
+     --- LOCAL
+     --declare id_mes_pr INT64;declare canales_pr ARRAY<STRING>;set id_mes_pr=202501;set canales_pr=NULL;
+
+     --call COMISIONES.pr_energy_rappel_objetivos_norte(202501, null);
+
+     CREATE OR REPLACE TABLE `mm-commissions-reporting.TEMP.ENERGY_RAPPEL_OBJETIVO_norte` 
+     OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)) as      
+     with imp as (
+
+          select * except(maximo,importe),
+          coalesce(LAG(maximo,1) over(partition by marco_energia, clase, concepto order by maximo asc), 0 ) as base,
+          maximo, importe
+          from `mm-commissions-reporting.GS.PARAM_KRT_ENERGIA_RAPPELxPCT_IMPORTE`
+          order by marco_energia, clase, concepto, maximo
+
+     ),  obj as (
+          
+          select 
+          --c. *
+          c.marca, c.marco_energia, c.distribuidor, c.distribuidor_norm,
+          --- Número de ventas
+          count(c.commission_id)  as nc, --over(partition by c.marca, c.marco_energia, c,distribuidor) as ncom
+          o.objetivo,
+          safe_divide(count(c.commission_id), o.objetivo) as ratio
+          from `mm-commissions-reporting.KRT_REPORTING.V_COMISIONES_ENERGIA` c
+          inner join `mm-commissions-reporting.GS.PARAM_KRT_ENERGIA_RAPPELxPCT_OBJETIVOS` o
+          on o.marca=c.marca and o.marco_energia=c.marco_energia and c.distribuidor_norm=`mm-commissions-reporting.KRT_MIG_PWC.f_dist_normalizaNombreDistribuidor`(o.distribuidor)
+          where (contains_substr(c.clase,"LUZ") or contains_substr(c.clase,"ELECTRICIDAD"))
+          and coalesce(o.objetivo,0) >0
+          group by 1,2,3,4,6
+
+
+     ) select c.*, o.ratio, i.base, i.maximo, i.importe
+     from `mm-commissions-reporting.KRT_REPORTING.V_COMISIONES_ENERGIA` c
+     inner join obj o using(marca, marco_energia, distribuidor_norm)
+     inner join imp i using(marco_energia, clase, concepto)
+     --order by c.commission_id asc
+     where o.ratio between i.base and i.maximo
+     and id_mes=id_mes_pr;
+
+
+     UPDATE `mm-commissions-reporting.TEMP.ENERGY_RAPPEL_OBJETIVO_norte` 
+     SET COMISION=importe,
+     concepto='D - Rappel',
+     commission_id=concat(commission_id,'ROB')
+     WHERE TRUE;
+
+end

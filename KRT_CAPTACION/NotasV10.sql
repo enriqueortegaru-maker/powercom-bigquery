@@ -1,0 +1,40 @@
+BEGIN 
+/*
+    CREACION DE NUEVA VERSION - VERSION 10
+    FUNCIONALIDADES:
+        LANZAMIENTO DE FLUJO UNICAMENTE EN CASO DE QUE DATOS DE CONTEXTUAL ESTEN ACTUALIZADOS
+        CONTROL DE DESCUBRIMIENTO DE VENTAS, SERVICIOS y DECOMISIONES
+        REGISTRO DE HISTORICO DE VENTAS CAPTACION: AGG_VENTAS_CAPTACION     -> subprex_1003_ActualizarTablasAggExtraccionv3
+        REGISTRO DE HISTORICO DE TABLAS INTERMEDIAS DIFERENCIADO POR TIPOS  -> subprex_1003_ActualizarTablasAggExtraccionv3
+        EXCLUSION DE RAPPEL DE SERVICIOS PROMOCIONADOS CON CATALOGOS DE PROMOCIONES CONCRETAS
+
+    FUNCIONES:
+        checkContextualDataBaseTablesUpdated
+        checkTableDiscovered
+        checkTableLoaded
+        f_putTableDevelopmentMode
+            
+    CORRECTIVO
+        CORRECTIVO DE CAUDAL INFORMADO EN CATALOGOS PRODUCTOS HEGAN Y MAMBO AXIÑA -> subprex_0108_CorregirCategoriaDeProductoMamboAxinav2
+        
+
+
+    NUEVA VERSIONES DE MODULOS 
+        prex_flujoDeCaptacionv10        
+        mm-commissions-reporting.KRT_CAPTACION.subprex_0108_CorregirCategoriaDeProductoMamboAxinav2 -> prex_VENTAS_CAPTACIONv6
+        subprex_1003_ActualizarTablasAggExtraccionv3
+
+    NUEVOS MODULOS
+        subprex_1008_CargarPromocionesV0
+
+   
+
+   
+    PONER EN PRODUCCION EN V11 LA VERSION DE CALCULO DE VENTAS RAPPEL E INTEGRAR EN VENTAS CAPTACION
+    CORRECTIVO DE CONTABILIDAD DE NUMERO DE ACCESOS DE BANDA ANCHA CONTABILIZADOS PARA CALCULO DEL RAPPEL -> subprex_0301
+
+
+
+*/
+
+END

@@ -1,0 +1,147 @@
+BEGIN
+
+--call `mm-commissions-reporting.TERMINALES.pr_provi_SUBSIDIO_IFS` ('INGESTA',202307,'DAILY','2023-07-01','2023-07-31');
+
+  insert into `mm-commissions-reporting.TERMINALES.CARGA_IFS_WORKAROUND`(
+  SELECT 
+  NULL AS TRANSACTION_ID,
+  'X001' AS COMPANY,
+  NULL INVOICE_NO,
+  NULL ITEM_ID,
+  NULL CUSTOMER_NO,
+  CASE 
+      WHEN CANAL = 'EYG' THEN 'BY'
+      WHEN CANAL = 'EML' THEN 'ML'
+      WHEN CANAL = 'EDB' THEN 'DB'
+      WHEN CANAL = 'ECI' THEN 'CI'
+      WHEN CANAL = 'MP' THEN 'MP'
+      WHEN CANAL = 'PH' THEN 'PH'
+
+      END AS HIERARCHY_ID,
+  NULL CUSTOMER_LEVEL,
+  CAST(NULL AS STRING) AGREEMENT_ID,
+  CAST(NULL AS STRING) SALES_PART_REBATE_GROUP,
+  case 
+    when UPPER(CONCEPTO) LIKE '%SUBSIDIO%'  THEN 'SUBSIDY'
+    when UPPER(CONCEPTO) LIKE '%PLAZOS%'    THEN 'SUBS_PAYTR'
+    when UPPER(CONCEPTO) LIKE '%FINAL%'     THEN 'SUBS_PAY25'
+    when UPPER(CONCEPTO) LIKE '%DOA%'       THEN 'DOA'
+
+    END REBATE_TYPE,
+  NULL AS REBATE_RATE,
+  CASE 
+    WHEN ZONA_FISCAL = 'PEN' THEN COMISION * 1.21 
+    WHEN ZONA_FISCAL = 'CAN' THEN COMISION * 1.07
+    END REBATE_AMOUNT,
+  NULL REBATE_COST_RATE,
+  NULL REBATE_COST_AMOUNT,
+  NULL INV_LINE_SALES_AMOUNT,
+  CASE 
+    WHEN ZONA_FISCAL = 'PEN' THEN 1.21 
+    WHEN ZONA_FISCAL = 'CAN' THEN 1.07
+    END  AS TAX_CODE,
+  CAST(CURRENT_DATE AS STRING) TRANSACTION_DATE,
+  CAST(NULL AS STRING) POS,
+  CAST(NULL AS STRING) CONTRACT,
+  NULL ORDER_NO,
+  CAST(NULL AS STRING) FINAL_REBATE_RATE,
+  CAST(NULL AS STRING) FINAL_REBATE_AMOUNT, 
+  CAST(NULL AS STRING) PART_NO,
+  CAST(NULL AS STRING) PERIOD_AGGREGATION_NO,
+  CAST(NULL AS STRING) FINAL_AGGREGATION_NO,
+  CAST(NULL AS STRING) INVOICE_ID,
+  NULL RMA_NO,
+  MES_PR CALCULATION_ID,
+  SERVICE_ID SUBSCRIPTION_ID,
+  ORDER_ID,
+  IMEI,
+  CAST(SALE_DATE AS STRING) AS SALES_DATE,
+  CAST(ACTIVATION_DATE AS STRING) AS ACT_DATE,
+  CAST(DEACTIVATION_DATE AS STRING) AS DEACTIV_DATE,
+  PHONE_NM AS MSISDN,
+  CONTRACT_ID,
+  NULL AS ICC,
+  CASE WHEN ORDER_TYPE_AGG = 'PORTABILIDAD' THEN '1'
+    ELSE '0' END MNP,
+  CUSTOMER_ID AS END_CUST_NO,
+  PURCH_PRICE,
+  NULL AS MRK_CONTRIB,
+  NULL AS TMS_INVOICE_NO,
+  CAST(NULL AS STRING) AS INVOICE_DATE,
+  NULL AS INVOICE_AMOUNT,
+  NULL AS INVOICE_TOT_AMOUNT,
+  CLAIM_CODE,
+  SUBSTR(ID_COMISIONISTA,1,2) AS CHANNEL_ID,
+  TARIFF_ID AS  CONTRACT_TYPE,
+  'YES' AS HANDSET,
+  CASE WHEN ORDER_TYPE_AGG = 'PORTABILIDAD' THEN 'PORT'
+    ELSE 'NEW_ADD' END ADD_TYPE,
+  PRODUCT_CODE AS MODEL_ID,
+  NULL INI_TOPUP,
+  AFTER_SALE,
+  CAST(NULL AS STRING) AS BONUS_CODE,
+  TIPO AS SIMULATION_CODE,
+  CAST(NULL AS STRING) AS DONOR_TYPE,
+  CASE 
+    WHEN ZONA_FISCAL = 'PEN' THEN '1' 
+    WHEN ZONA_FISCAL = 'CAN' THEN '4'
+    END REGION_CODE,
+  IF(COD_SEGMENTO = '12','AUTO','RES') AS  CUSTOMER_TYPE,
+  ID_COMISIONISTA AS SFID,
+  NULL AS LOAD_FILE_ID,
+  NULL ROW_NO,
+  'WORKAROUND TERMINALES BIGQUERY' AS NOTE_TEXT,
+  CAST(NULL AS STRING) AS IN_PORTFOLIO,
+  END_USER_PRICE,
+  CAST(NULL AS STRING) AS TECHNOLOGY,
+  IF(BILLING_TYPE_DS = 'PREPAID','TARJ','CONT') AS CONTRACT_CATEGORY,
+  CASE 
+    WHEN UPPER(TARIFF_DS) LIKE '%FIBRA%' and order_type_agg <> 'RENUEVO' THEN 'conv_pos'
+    WHEN UPPER(TARIFF_DS) LIKE '%ADLS%' and order_type_agg <> 'RENUEVO' THEN 'conv_pos'
+    WHEN UPPER(TARIFF_DS) LIKE '%CONV' and order_type_agg <> 'RENUEVO' THEN 'conv_pos'
+    WHEN order_type_agg = 'RENUEVO' THEN 'renewal_pos'
+    ELSE 'pos' end as ORDER_CHANNEL,
+  NET_SUBSIDY,
+  cast(null as string) as TAX_PERC,
+  cast(null as string) as ERROR,
+  null as MIGRATED,
+  DUPLICATED_IMEI,
+  cast(null as string) as MARKET_CODE,
+  cast(null as string) as DONOR,
+  cast(null as string) as INSTALLMENT_ID,
+  null as SERIAL_NO,
+  cast(null as string) as LAPTOP_MODEL,
+  cast(null as string) as ADD_ON1,
+  cast(null as string) as ADD_ON2,
+  cast(null as string) as ADD_ON3,
+  cast(null as string) as ADD_ON4,
+  cast(null as string) as ADD_ON5,
+  cast(null as string) as ADD_ON6,
+  cast(null as string) as ADD_ON7,
+  cast(null as string) as ADD_ON8,
+  cast(null as string) as ADD_ON9,
+  cast(null as string)as ADD_ON10,
+  cast(null as string) as ADD_ON11,
+  cast(null as string) as ADD_ON12,
+  cast(null as string) as ADD_ON13,
+  cast(null as string) as ADD_ON14,
+  cast(null as string) as ADD_ON15,
+  cast(null as string) as FRAUD_TYPE,
+  cast(null as string) as TYPE,
+  cast(null as string) as REVISION,
+  cast(null as string) as PRIORITY_CHANNEL,
+  cast(null as string) as CONTRACT_TYPE_GROUP,
+  cast(null as string) as YOI_MIGRATION_DATE,
+  cast(null as string) as YOI_TMS_ORDER_TYPE,
+  cast(null as string) as YOI_TMS_ORDER_TYPE_DB,
+  cast(null as string) as YOI_CUS_KATEGORY,
+  cast(null as string) as YOI_DISCOUNT_CODE,
+  proceso||'-'||MES_PR ID_PROCESO
+
+  from
+  `mm-commissions-reporting.TERMINALES.TERMINALES` i
+  where
+  i.id_mes = MES_PR
+  
+  );
+END
